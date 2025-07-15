@@ -5,32 +5,56 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/yuin/goldmark"
 )
 
-func main() {
-	host := runtime.GOOS
-
-	homeEnv := func() string {
-		if host == "windows" {
-			return "%USERPROFILE%"
-		}
-		return "$HOME"
-	}()
-
+func initCacheDir() (string, error) {
+	var cachePath string
 	home, err := os.UserHomeDir()
 	if err != nil {
-		fmt.Printf("%s is not set.\n", homeEnv)
-		os.Exit(1)
+		return "", err
 	} else {
-		cachePath := filepath.Join(home, ".cache", "mdserve")
+		cachePath = filepath.Join(home, ".cache", "mdserve")
 		err := os.MkdirAll(cachePath, 0755)
 		if err != nil {
-			fmt.Printf("Error: failed to make cache directory.\n")
-			os.Exit(1)
+			return "", err
 		}
+	}
+
+	return cachePath, nil
+}
+
+func initHtmlTemplate(path string) error {
+	htmlTemplate := `
+<html>
+	<head>
+		<title>Markdown Renderer</title>
+	</head>
+	<body>
+		{{ .Content }}
+	</body>
+</html>`
+
+	err := os.WriteFile(path, []byte(htmlTemplate), 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func main() {
+	cachePath, err := initCacheDir()
+	if err != nil {
+		fmt.Printf("Error: can't initialize cache dir.\n%v\n", err)
+		os.Exit(1)
+	}
+
+	err = initHtmlTemplate(filepath.Join(cachePath, "index.html"))
+	if err != nil {
+		fmt.Printf("Error: can't initialize html template.\n%v\n", err)
+		os.Exit(1)
 	}
 
 	if len(os.Args) != 2 {
