@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/yuin/goldmark"
@@ -116,41 +118,57 @@ func main() {
 		os.Exit(1)
 	}
 
-	content, err := os.ReadFile(file)
-	if err != nil {
-		fmt.Printf("Error: failed to read file.\n%v\n", err)
-		os.Exit(1)
+	type AppState struct {
+		tmpl         *template.Template
+		renderedHTML template.HTML
+		version      string
 	}
 
-	var buf bytes.Buffer
-	md := goldmark.New(
-		goldmark.WithExtensions(
-			extension.GFM,
-		),
-		goldmark.WithParserOptions(
-			parser.WithAutoHeadingID(),
-		),
-	)
-	err = md.Convert(content, &buf)
-	if err != nil {
-		fmt.Printf("Error: failed to parse markdown.\n%v\n", err)
-		os.Exit(1)
+	state := &AppState{}
+
+	update := func() {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			fmt.Printf("Error: failed to read file.\n%v\n", err)
+			return
+		}
+
+		var buf bytes.Buffer
+		md := goldmark.New(
+			goldmark.WithExtensions(
+				extension.GFM,
+			),
+			goldmark.WithParserOptions(
+				parser.WithAutoHeadingID(),
+			),
+		)
+		err = md.Convert(content, &buf)
+		if err != nil {
+			fmt.Printf("Error: failed to parse markdown.\n%v\n", err)
+			os.Exit(1)
+		}
+
+		tmpl, err := template.ParseFiles(htmlPath)
+		if err != nil {
+			fmt.Printf("Error: failed to parse html template.\n%v\n", err)
+		}
+
+		state.tmpl = tmpl
+		state.renderedHTML = template.HTML(buf.String())
+		state.version = strconv.FormatInt(time.Now().UnixNano(), 10)
+
+		fmt.Printf("Reloaded!")
 	}
 
-	var renderedHTML struct {
-		Content template.HTML
-	}
+	update()
 
-	tmpl, err := template.ParseFiles(htmlPath)
-	if err != nil {
-		fmt.Printf("Error: failed to parse html template.\n%v\n", err)
-	}
+	watchFile(file, update)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		tmpl.Execute(w, struct {
+		state.tmpl.Execute(w, struct {
 			Content template.HTML
 		}{
-			Content: template.HTML(buf.String()),
+			Content: state.renderedHTML,
 		})
 	})
 
