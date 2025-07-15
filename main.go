@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"html/template"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -51,7 +53,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = initHtmlTemplate(filepath.Join(cachePath, "index.html"))
+	htmlPath := filepath.Join(cachePath, "index.html")
+	err = initHtmlTemplate(htmlPath)
 	if err != nil {
 		fmt.Printf("Error: can't initialize html template.\n%v\n", err)
 		os.Exit(1)
@@ -76,7 +79,7 @@ func main() {
 
 	content, err := os.ReadFile(file)
 	if err != nil {
-		fmt.Printf("Error: failed to read file.\n%v", err)
+		fmt.Printf("Error: failed to read file.\n%v\n", err)
 		os.Exit(1)
 	}
 
@@ -84,7 +87,23 @@ func main() {
 	md := goldmark.New()
 	err = md.Convert(content, &buf)
 	if err != nil {
-		fmt.Println("Error: failed to parse markdown.\n", err)
+		fmt.Printf("Error: failed to parse markdown.\n%v\n", err)
 		os.Exit(1)
 	}
+
+	tmpl, err := template.ParseFiles(htmlPath)
+	if err != nil {
+		fmt.Printf("Error: failed to parse html template.\n%v\n", err)
+	}
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		tmpl.Execute(w, struct {
+			Content template.HTML
+		}{
+			Content: template.HTML(buf.String()),
+		})
+	})
+
+	http.ListenAndServe(":6942", nil)
+
 }
