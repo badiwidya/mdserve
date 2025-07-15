@@ -36,9 +36,12 @@ func initHtmlTemplate(path string) error {
 <html>
 	<head>
 		<title>Markdown Renderer</title>
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.8.1/github-markdown-light.min.css" />
 	</head>
 	<body>
-		{{ .Content }}
+		<article class="markdown-body">
+			{{ .Content }}
+		</article>
 	</body>
 </html>`
 
