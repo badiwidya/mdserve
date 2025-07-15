@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -87,12 +88,19 @@ func watchFile(path string, onChange func()) error {
 		for {
 			select {
 			case event := <-watcher.Events:
-				if event.Op&fsnotify.Write == fsnotify.Write {
+				if event.Has(fsnotify.Write) || event.Has(fsnotify.Rename) {
 					fmt.Println("File changed, reloading....")
+
+					time.Sleep(100 * time.Millisecond)
 					onChange()
+
+					err := watcher.Add(path)
+					if err != nil {
+						fmt.Printf("Error re-watching file\n%v\n", err)
+					}
 				}
 			case err := <-watcher.Errors:
-				fmt.Printf("watch error\n%v\n", err)
+				fmt.Printf("Watch error\n%v\n", err)
 			}
 
 		}
@@ -136,6 +144,7 @@ func main() {
 		tmpl         *template.Template
 		renderedHTML template.HTML
 		version      string
+		mu           sync.Mutex
 	}
 
 	state := &AppState{}
@@ -167,11 +176,14 @@ func main() {
 			fmt.Printf("Error: failed to parse html template.\n%v\n", err)
 		}
 
+		state.mu.Lock()
+		defer state.mu.Unlock()
+
 		state.tmpl = tmpl
 		state.renderedHTML = template.HTML(buf.String())
 		state.version = strconv.FormatInt(time.Now().UnixNano(), 10)
 
-		fmt.Printf("Reloaded!")
+		fmt.Printf("Reloaded!\n")
 	}
 
 	update()
@@ -179,6 +191,9 @@ func main() {
 	watchFile(file, update)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		state.mu.Lock()
+		defer state.mu.Unlock()
+
 		state.tmpl.Execute(w, struct {
 			Content template.HTML
 		}{
@@ -187,6 +202,9 @@ func main() {
 	})
 
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+		state.mu.Lock()
+		defer state.mu.Unlock()
+
 		fmt.Fprint(w, state.version)
 	})
 
