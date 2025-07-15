@@ -98,9 +98,9 @@ move mdserve.exe %USERPROFILE%\bin
 
 ## Credits
 
-- [goldmark](https://github.com/yuin/goldmark)
-- [github-markdown-css](https://github.com/sindresorhus/github-markdown-css)
-- [fsnotify](https://github.com/fsnotify/fsnotify)
+1. [fsnotify](https://github.com/fsnotify/fsnotify)
+2. [goldmark](https://github.com/yuin/goldmark)
+3. [github-markdown-css](https://github.com/sindresorhus/github-markdown-css)
 
 ## License
 
