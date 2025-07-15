@@ -37,16 +37,30 @@ func initCacheDir() (string, error) {
 func initHtmlTemplate(path string) error {
 	htmlTemplate := `
 <html>
-	<head>
-		<title>Markdown Renderer</title>
-		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.8.1/github-markdown-light.min.css" />
-		<style>body { padding: 2rem; }</style>
-	</head>
-	<body>
-		<article class="markdown-body">
-			{{ .Content }}
-		</article>
-	</body>
+<head>
+	<title>Markdown Renderer</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.8.1/github-markdown-light.min.css" />
+	<style>body { padding: 2rem; }</style>
+	<script>
+		window._version = "";
+		setInterval(() => {
+			fetch("/ping")
+				.then(r => r.text())
+				.then(v => {
+					if (window._version === '') {
+						window._version = v;
+					} else if (v !== window._version) {
+						location.reload();
+					}
+				})
+		}, 1000);
+	</script>	
+</head>
+<body>
+	<article class="markdown-body">
+		{{ .Content }}
+	</article>
+</body>
 </html>`
 
 	err := os.WriteFile(path, []byte(htmlTemplate), 0644)
@@ -170,6 +184,10 @@ func main() {
 		}{
 			Content: state.renderedHTML,
 		})
+	})
+
+	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, state.version)
 	})
 
 	url := "http://localhost:6942"
