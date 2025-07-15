@@ -6,7 +6,9 @@ import (
 	"html/template"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 
 	"github.com/yuin/goldmark"
 )
@@ -104,6 +106,25 @@ func main() {
 		})
 	})
 
-	http.ListenAndServe(":6942", nil)
+	url := "http://localhost:6942"
 
+	fmt.Printf("Markdown served on %s\n", url)
+	fmt.Printf("CTRL + C to quit...\n")
+
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+
+	cmd.Start()
+
+	err = http.ListenAndServe(":6942", nil)
+	if err != nil {
+		fmt.Printf("Server failed to start\n%v\n", err)
+	}
 }
