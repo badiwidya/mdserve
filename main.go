@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"github.com/yuin/goldmark"
 )
 
 func main() {
@@ -44,6 +47,20 @@ func main() {
 
 	if filepath.Ext(file) != ".md" {
 		fmt.Printf("Error: %s is not a markdown file.\n", file)
+		os.Exit(1)
+	}
+
+	content, err := os.ReadFile(file)
+	if err != nil {
+		fmt.Printf("Error: failed to read file.\n%v", err)
+		os.Exit(1)
+	}
+
+	var buf bytes.Buffer
+	md := goldmark.New()
+	err = md.Convert(content, &buf)
+	if err != nil {
+		fmt.Println("Error: failed to parse markdown.\n", err)
 		os.Exit(1)
 	}
 }
