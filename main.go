@@ -37,6 +37,7 @@ func initHtmlTemplate(path string) error {
 	<head>
 		<title>Markdown Renderer</title>
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.8.1/github-markdown-light.min.css" />
+		<style>body { padding: 2rem; }</style>
 	</head>
 	<body>
 		<article class="markdown-body">
