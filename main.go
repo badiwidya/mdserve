@@ -11,6 +11,8 @@ import (
 	"runtime"
 
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/parser"
 )
 
 func initCacheDir() (string, error) {
@@ -86,7 +88,14 @@ func main() {
 	}
 
 	var buf bytes.Buffer
-	md := goldmark.New()
+	md := goldmark.New(
+		goldmark.WithExtensions(
+			extension.GFM,
+		),
+		goldmark.WithParserOptions(
+			parser.WithAutoHeadingID(),
+		),
+	)
 	err = md.Convert(content, &buf)
 	if err != nil {
 		fmt.Printf("Error: failed to parse markdown.\n%v\n", err)
