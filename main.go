@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
@@ -50,6 +51,36 @@ func initHtmlTemplate(path string) error {
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func watchFile(path string, onChange func()) error {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return err
+	}
+
+	err = watcher.Add(path)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		defer watcher.Close()
+		for {
+			select {
+			case event := <-watcher.Events:
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					fmt.Println("File changed, reloading....")
+					onChange()
+				}
+			case err := <-watcher.Errors:
+				fmt.Printf("watch error\n%v\n", err)
+			}
+
+		}
+	}()
 
 	return nil
 }
@@ -104,6 +135,10 @@ func main() {
 	if err != nil {
 		fmt.Printf("Error: failed to parse markdown.\n%v\n", err)
 		os.Exit(1)
+	}
+
+	var renderedHTML struct {
+		Content template.HTML
 	}
 
 	tmpl, err := template.ParseFiles(htmlPath)
