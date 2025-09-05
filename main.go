@@ -190,7 +190,10 @@ func main() {
 
 	watchFile(file, update)
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	dir := filepath.Dir(file)
+	fs := http.FileServer(http.Dir(dir))
+
+	http.HandleFunc("/md", func(w http.ResponseWriter, r *http.Request) {
 		state.mu.Lock()
 		defer state.mu.Unlock()
 
@@ -208,7 +211,9 @@ func main() {
 		fmt.Fprint(w, state.version)
 	})
 
-	url := "http://localhost:6942"
+	http.Handle("/", fs)
+
+	url := "http://localhost:6942/md"
 
 	fmt.Printf("Markdown served on %s\n", url)
 	fmt.Printf("CTRL + C to quit...\n")
