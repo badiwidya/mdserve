@@ -17,6 +17,7 @@ import (
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
+	"go.abhg.dev/goldmark/mermaid"
 )
 
 func initCacheDir() (string, error) {
@@ -55,7 +56,7 @@ func initHtmlTemplate(path string) error {
 					}
 				})
 		}, 1000);
-	</script>	
+	</script>
 </head>
 <body>
 	<article class="markdown-body">
@@ -160,6 +161,7 @@ func main() {
 		md := goldmark.New(
 			goldmark.WithExtensions(
 				extension.GFM,
+				&mermaid.Extender{},
 			),
 			goldmark.WithParserOptions(
 				parser.WithAutoHeadingID(),
