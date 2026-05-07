@@ -18,6 +18,7 @@ import (
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/renderer/html"
 	"go.abhg.dev/goldmark/mermaid"
 )
 
@@ -159,6 +160,7 @@ func main() {
 			goldmark.WithParserOptions(
 				parser.WithAutoHeadingID(),
 			),
+			goldmark.WithRendererOptions(html.WithUnsafe()),
 		)
 		err = md.Convert(content, &buf)
 		if err != nil {
@@ -188,21 +190,6 @@ func main() {
 	dir := filepath.Dir(file)
 	fs := http.FileServer(http.Dir(dir))
 
-	http.HandleFunc("/md", func(w http.ResponseWriter, r *http.Request) {
-		state.mu.Lock()
-		defer state.mu.Unlock()
-
-		state.tmpl.Execute(w, struct {
-			Content     template.HTML
-			InjectedCSS template.CSS
-			ThemeSuffix string
-		}{
-			Content:     state.renderedHTML,
-			InjectedCSS: state.injectedCss,
-			ThemeSuffix: state.themeSuffix,
-		})
-	})
-
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		state.mu.Lock()
 		defer state.mu.Unlock()
@@ -210,9 +197,27 @@ func main() {
 		fmt.Fprint(w, state.version)
 	})
 
-	http.Handle("/", fs)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			state.mu.Lock()
+			defer state.mu.Unlock()
 
-	url := "http://localhost:6942/md"
+			state.tmpl.Execute(w, struct {
+				Content     template.HTML
+				InjectedCSS template.CSS
+				ThemeSuffix string
+			}{
+				Content:     state.renderedHTML,
+				InjectedCSS: state.injectedCss,
+				ThemeSuffix: state.themeSuffix,
+			})
+			return
+		}
+
+		fs.ServeHTTP(w, r)
+	})
+
+	url := "http://localhost:6942"
 
 	fmt.Printf("Markdown served on %s\n", url)
 	fmt.Printf("CTRL + C to quit...\n")
