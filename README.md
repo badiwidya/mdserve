@@ -14,8 +14,10 @@ It renders your Markdown file to the browser, nothing more, nothing less.
 ## Usage
 
 ```bash
-mdserve path/to/markdown.md
+ mdserve [-theme=light|dark|auto] [markdown file]
 ```
+
+If no flag is provided, the default is `auto`.
 
 Then open your browser and go to: `http://localhost:6942`
 

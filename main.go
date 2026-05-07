@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
+	"go.abhg.dev/goldmark/mermaid"
 )
 
 func initCacheDir() (string, error) {
@@ -40,8 +42,14 @@ func initHtmlTemplate(path string) error {
 <html>
 <head>
 	<title>Markdown Renderer</title>
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.8.1/github-markdown-light.min.css" />
-	<style>body { padding: 2rem; }</style>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.8.1/github-markdown{{ .ThemeSuffix }}.min.css" />
+	<style>
+		body {
+			padding: 2rem;
+		}
+
+		{{ .InjectedCSS }}
+	</style>
 	<script>
 		window._version = "";
 		setInterval(() => {
@@ -55,7 +63,7 @@ func initHtmlTemplate(path string) error {
 					}
 				})
 		}, 1000);
-	</script>	
+	</script>
 </head>
 <body>
 	<article class="markdown-body">
@@ -110,6 +118,9 @@ func watchFile(path string, onChange func()) error {
 }
 
 func main() {
+	prefTheme := flag.String("theme", "system", "Set markdown preview theme.")
+	flag.Parse()
+
 	cachePath, err := initCacheDir()
 	if err != nil {
 		fmt.Printf("Error: can't initialize cache dir.\n%v\n", err)
@@ -123,12 +134,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	if len(os.Args) != 2 {
-		fmt.Printf("USAGE: mdserve [markdown file]\n")
-		os.Exit(1)
+	if flag.NArg() != 1 {
+		fmt.Printf("USAGE: mdserve [-theme=light|dark] [markdown file]\n")
 	}
 
-	file := os.Args[1]
+	file := flag.Arg(0)
 
 	if _, err := os.Stat(file); os.IsNotExist(err) {
 		fmt.Printf("Error: %s not found.\n", file)
@@ -144,10 +154,32 @@ func main() {
 		tmpl         *template.Template
 		renderedHTML template.HTML
 		version      string
+		themeSuffix  string
+		injectedCss  template.CSS
 		mu           sync.Mutex
 	}
+	injectedCss := ""
+	themeSuffix := ""
 
-	state := &AppState{}
+	switch *prefTheme {
+	case "light":
+		themeSuffix = "-light"
+	case "dark":
+		themeSuffix = "-dark"
+	default:
+		injectedCss = `
+		@media (prefers-color-scheme: dark) {
+			body {
+				background-color: #0d1117;
+			}
+		}
+		`
+	}
+
+	state := &AppState{
+		injectedCss: template.CSS(injectedCss),
+		themeSuffix: themeSuffix,
+	}
 
 	update := func() {
 		content, err := os.ReadFile(file)
@@ -160,6 +192,7 @@ func main() {
 		md := goldmark.New(
 			goldmark.WithExtensions(
 				extension.GFM,
+				&mermaid.Extender{},
 			),
 			goldmark.WithParserOptions(
 				parser.WithAutoHeadingID(),
@@ -198,9 +231,13 @@ func main() {
 		defer state.mu.Unlock()
 
 		state.tmpl.Execute(w, struct {
-			Content template.HTML
+			Content     template.HTML
+			InjectedCSS template.CSS
+			ThemeSuffix string
 		}{
-			Content: state.renderedHTML,
+			Content:     state.renderedHTML,
+			InjectedCSS: state.injectedCss,
+			ThemeSuffix: state.themeSuffix,
 		})
 	})
 

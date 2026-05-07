@@ -1,10 +1,11 @@
 module github.com/badiwidya/mdserve
 
-go 1.24.5
+go 1.25.0
 
 require (
-	github.com/fsnotify/fsnotify v1.9.0
-	github.com/yuin/goldmark v1.7.12
+	github.com/fsnotify/fsnotify v1.10.1
+	github.com/yuin/goldmark v1.8.2
+	go.abhg.dev/goldmark/mermaid v0.6.0
 )
 
-require golang.org/x/sys v0.13.0 // indirect
+require golang.org/x/sys v0.43.0 // indirect
