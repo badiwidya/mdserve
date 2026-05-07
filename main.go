@@ -21,64 +21,39 @@ import (
 	"go.abhg.dev/goldmark/mermaid"
 )
 
-func initCacheDir() (string, error) {
-	var cachePath string
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	} else {
-		cachePath = filepath.Join(home, ".cache", "mdserve")
-		err := os.MkdirAll(cachePath, 0755)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return cachePath, nil
-}
-
-func initHtmlTemplate(path string) error {
-	htmlTemplate := `
+var htmlTemplate string = `
 <html>
 <head>
-	<title>Markdown Renderer</title>
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.8.1/github-markdown{{ .ThemeSuffix }}.min.css" />
-	<style>
-		body {
-			padding: 2rem;
-		}
-
-		{{ .InjectedCSS }}
-	</style>
-	<script>
-		window._version = "";
-		setInterval(() => {
-			fetch("/ping")
-				.then(r => r.text())
-				.then(v => {
-					if (window._version === '') {
-						window._version = v;
-					} else if (v !== window._version) {
-						location.reload();
-					}
-				})
-		}, 1000);
-	</script>
-</head>
-<body>
-	<article class="markdown-body">
-		{{ .Content }}
-	</article>
-</body>
-</html>`
-
-	err := os.WriteFile(path, []byte(htmlTemplate), 0644)
-	if err != nil {
-		return err
+<title>Markdown Renderer</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.8.1/github-markdown{{ .ThemeSuffix }}.min.css" />
+<style>
+	body {
+		padding: 2rem;
 	}
 
-	return nil
-}
+	{{ .InjectedCSS }}
+</style>
+<script>
+	window._version = "";
+	setInterval(() => {
+		fetch("/ping")
+			.then(r => r.text())
+			.then(v => {
+				if (window._version === '') {
+					window._version = v;
+				} else if (v !== window._version) {
+					location.reload();
+				}
+			})
+	}, 1000);
+</script>
+</head>
+<body>
+<article class="markdown-body">
+	{{ .Content }}
+</article>
+</body>
+</html>`
 
 func watchFile(path string, onChange func()) error {
 	watcher, err := fsnotify.NewWatcher()
@@ -120,19 +95,6 @@ func watchFile(path string, onChange func()) error {
 func main() {
 	prefTheme := flag.String("theme", "system", "Set markdown preview theme.")
 	flag.Parse()
-
-	cachePath, err := initCacheDir()
-	if err != nil {
-		fmt.Printf("Error: can't initialize cache dir.\n%v\n", err)
-		os.Exit(1)
-	}
-
-	htmlPath := filepath.Join(cachePath, "index.html")
-	err = initHtmlTemplate(htmlPath)
-	if err != nil {
-		fmt.Printf("Error: can't initialize html template.\n%v\n", err)
-		os.Exit(1)
-	}
 
 	if flag.NArg() != 1 {
 		fmt.Printf("USAGE: mdserve [-theme=light|dark] [markdown file]\n")
@@ -204,7 +166,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		tmpl, err := template.ParseFiles(htmlPath)
+		tmpl, err := template.New("index").Parse(htmlTemplate)
 		if err != nil {
 			fmt.Printf("Error: failed to parse html template.\n%v\n", err)
 		}
@@ -267,7 +229,7 @@ func main() {
 
 	cmd.Start()
 
-	err = http.ListenAndServe(":6942", nil)
+	err := http.ListenAndServe(":6942", nil)
 	if err != nil {
 		fmt.Printf("Server failed to start\n%v\n", err)
 	}
