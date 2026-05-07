@@ -14,8 +14,11 @@ import (
 	"sync"
 	"time"
 
+	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
+	"github.com/alecthomas/chroma/v2/styles"
 	"github.com/fsnotify/fsnotify"
 	"github.com/yuin/goldmark"
+	highlighting "github.com/yuin/goldmark-highlighting/v2"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
@@ -55,6 +58,19 @@ var htmlTemplate string = `
 </article>
 </body>
 </html>`
+
+func getChromaCss(themeName string) string {
+	style := styles.Get(themeName)
+	if style == nil {
+		style = styles.Fallback
+	}
+
+	formatter := chromahtml.New(chromahtml.WithClasses(true))
+
+	var buf bytes.Buffer
+	formatter.WriteCSS(&buf, style)
+	return buf.String()
+}
 
 func watchFile(path string, onChange func()) error {
 	watcher, err := fsnotify.NewWatcher()
@@ -121,23 +137,33 @@ func main() {
 		injectedCss  template.CSS
 		mu           sync.Mutex
 	}
-	injectedCss := ""
+	customCss := ""
 	themeSuffix := ""
+	chromaCss := ""
 
 	switch *prefTheme {
 	case "light":
 		themeSuffix = "-light"
+		chromaCss = getChromaCss("github")
 	case "dark":
 		themeSuffix = "-dark"
+		chromaCss = getChromaCss("github-dark")
 	default:
-		injectedCss = `
+		customCss = `
 		@media (prefers-color-scheme: dark) {
 			body {
 				background-color: #0d1117;
 			}
 		}
 		`
+
+		lightCode := getChromaCss("github")
+		darkCode := getChromaCss("github-dark")
+
+		chromaCss = lightCode + "\n@media (prefers-color-scheme: dark) {\n" + darkCode + "\n}"
 	}
+
+	injectedCss := customCss + "\n" + chromaCss
 
 	state := &AppState{
 		injectedCss: template.CSS(injectedCss),
@@ -156,6 +182,10 @@ func main() {
 			goldmark.WithExtensions(
 				extension.GFM,
 				&mermaid.Extender{},
+				highlighting.NewHighlighting(
+					highlighting.WithStyle("github"),
+					highlighting.WithFormatOptions(chromahtml.WithClasses(true)),
+				),
 			),
 			goldmark.WithParserOptions(
 				parser.WithAutoHeadingID(),

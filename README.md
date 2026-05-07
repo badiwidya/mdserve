@@ -7,6 +7,7 @@ A simple markdown renderer written in Go.
 - Live reloading [<sup>\[1\]</sup>](#credits)
 - Github Flavored Markdown (GFM) support [<sup>\[2\]</sup>](#credits)
 - Github-like visual [<sup>\[3\]</sup>](#credits)
+- Syntax highlighting support [<sup>\[4\]</sup>](#credits)
 - Zero configuration
 
 It renders your Markdown file to the browser, nothing more, nothing less.
@@ -103,6 +104,7 @@ move mdserve.exe %USERPROFILE%\bin
 1. [fsnotify](https://github.com/fsnotify/fsnotify)
 2. [goldmark](https://github.com/yuin/goldmark)
 3. [github-markdown-css](https://github.com/sindresorhus/github-markdown-css)
+4. [chroma](https://github.com/alecthomas/chroma)
 
 ## License
 
